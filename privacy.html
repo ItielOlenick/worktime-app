@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Worktime privacy policy</title>
+    <style>
+      :root { color-scheme: light dark; --bg: #f6f6f3; --text: #1b1d22; --muted: #5d6270; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #0f1115; --text: #eceef2; --muted: #a0a6b3; } }
+      body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 system-ui, sans-serif; }
+      main { max-width: 680px; margin: 0 auto; padding: 32px 16px 48px; }
+      h1 { font-size: 1.6rem; margin: 0 0 4px; }
+      h2 { font-size: 1.1rem; margin: 28px 0 6px; }
+      .muted { color: var(--muted); }
+      a { color: #2a78d6; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Worktime privacy policy</h1>
+      <p class="muted">Last updated October 23, 2026</p>
+
+      <p>Worktime is a personal time tracker run by Itiel Olenick for his own use. Only the owner's Google account can sign in. Nobody else's data is collected.</p>
+
+      <h2>What Worktime stores</h2>
+      <p>The time entries, projects, companies, teams, day summaries and settings you enter, an activity log of changes, and the devices and API keys that can access them. This is stored in a private database and in encrypted backups that only the owner can reach.</p>
+
+      <h2>What Worktime gets from Google</h2>
+      <p>When you sign in with Google, Worktime receives your email address and Google's account ID, and uses them only to check that you are the owner. When you connect Google, Worktime also gets access to files it creates in your Google Drive (the <code>drive.file</code> permission). It creates one spreadsheet, writes your time data to it, and cannot see any other file in your Drive. The access token is stored encrypted and is used for nothing else.</p>
+      <p>Worktime's use of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+
+      <h2>Sharing</h2>
+      <p>Your data isn't sold, shared or used for advertising, and no analytics or tracking is used. It's processed only by the services that run Worktime: Supabase (database and API), GitHub (app hosting and backups) and Google (sign-in and your spreadsheet).</p>
+
+      <h2>Your control</h2>
+      <p>You can export everything from Settings, disconnect Google from Settings or from your <a href="https://myaccount.google.com/connections">Google account's connections page</a>, and revoke any device's access at any time. Disconnecting deletes Worktime's Google token; the spreadsheet stays in your Drive, and is yours.</p>
+
+      <h2>Contact</h2>
+      <p>Questions: use the support email shown on Google's sign-in screen for Worktime.</p>
+
+      <p><a href="./">Back to Worktime</a></p>
+    </main>
+  </body>
+</html>
