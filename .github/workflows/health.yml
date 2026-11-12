@@ -1,0 +1,76 @@
+# Uptime check, shipped with the published site (public repos run Actions for free).
+# Every 10 minutes: the API (which also checks the database) and the web app. A failure that
+# persists over three tries opens an "outage" issue, which emails the owner; recovery closes it.
+name: Health
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: health
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check
+        id: check
+        run: |
+          api=https://jcbbunvaiekmigyfouqi.supabase.co/functions/v1/worktime/health
+          site=https://itielolenick.github.io/worktime-app/version.json
+          for i in 1 2 3; do
+            a=$(curl -s -o /tmp/h -w '%{http_code} %{time_total}' --max-time 20 "$api" || true)
+            s=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "$site" || true)
+            if [[ "$a" == 200* ]] && grep -q '"ok":true' /tmp/h && [[ "$s" == 200 ]]; then
+              echo "ok=1" >> "$GITHUB_OUTPUT"; echo "API $a s, site $s" >> "$GITHUB_STEP_SUMMARY"; exit 0
+            fi
+            echo "try $i: API $a, site $s"; sleep 25
+          done
+          echo "ok=0" >> "$GITHUB_OUTPUT"
+          echo "detail=API answered '$a', site answered '$s'" >> "$GITHUB_OUTPUT"
+
+      - name: Open or close the incident
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open=$(gh issue list -R "$GITHUB_REPOSITORY" --label outage --state open --json number -q '.[0].number')
+          if [ "${{ steps.check.outputs.ok }}" = "1" ]; then
+            if [ -n "$open" ]; then gh issue close "$open" -R "$GITHUB_REPOSITORY" --comment "Recovered at $(date -u '+%Y-%m-%d %H:%M UTC')."; fi
+          elif [ -z "$open" ]; then
+            gh label create outage -R "$GITHUB_REPOSITORY" --color d73a4a --force
+            gh issue create -R "$GITHUB_REPOSITORY" --label outage --title "Worktime is down" \
+              --body "@ItielOlenick Worktime failed its health check at $(date -u '+%Y-%m-%d %H:%M UTC'): ${{ steps.check.outputs.detail }}. The app keeps working offline and syncs when the API is back. Runbook: docs/OPERATIONS.md in the worktime repo. This issue closes itself on recovery."
+          fi
+
+      # Backstop for the Google Sheet: the API syncs a few seconds after each change; this
+      # catches any sync that was cut short. If syncing keeps failing for 2 hours, it says so.
+      - name: Sheet sync
+        if: steps.check.outputs.ok == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEY: ${{ secrets.WORKTIME_SYNC_KEY }}
+        run: |
+          [ -n "$KEY" ] || exit 0
+          api=https://jcbbunvaiekmigyfouqi.supabase.co/functions/v1/worktime
+          r=$(curl -s --max-time 60 -X POST "$api/google/sync" -H "Authorization: Bearer $KEY" -H 'Content-Type: application/json' -d '{"backstop":true}' || true)
+          echo "$r" | jq -c '{linked, synced_at, pending, sync_error, sync_error_since}' >> "$GITHUB_STEP_SUMMARY" || true
+          linked=$(echo "$r" | jq -r '.linked // false')
+          err=$(echo "$r" | jq -r '.sync_error // empty')
+          since=$(echo "$r" | jq -r '.sync_error_since // empty')
+          open=$(gh issue list -R "$GITHUB_REPOSITORY" --label sheet-sync --state open --json number -q '.[0].number')
+          if [ "$linked" = "true" ] && [ -n "$err" ] && [ $(( $(date +%s) - $(date -d "$since" +%s) )) -gt 7200 ]; then
+            if [ -z "$open" ]; then
+              gh label create sheet-sync -R "$GITHUB_REPOSITORY" --color fbca04 --force
+              gh issue create -R "$GITHUB_REPOSITORY" --label sheet-sync --title "The Google Sheet isn't updating" \
+                --body "@ItielOlenick Worktime hasn't been able to update your Google Sheet since $since: $err. Your data is safe in Worktime and its other backups. Fix it in Settings → Google. This issue closes itself once the sheet updates again."
+            fi
+          elif [ -n "$open" ] && [ -z "$err" ]; then
+            gh issue close "$open" -R "$GITHUB_REPOSITORY" --comment "The sheet is updating again ($(date -u '+%Y-%m-%d %H:%M UTC'))."
+          fi
